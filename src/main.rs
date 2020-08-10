@@ -28,9 +28,7 @@ impl Client {
             ("password", &self.password),
             ("embed", &false.to_string()),
         ];
-        let query_params = [
-            ("service",  "https://connect.garmin.com/modern"),
-        ];
+        let query_params = [("service", "https://connect.garmin.com/modern")];
 
         let client = reqwest::blocking::Client::new();
         let res = client
@@ -38,7 +36,8 @@ impl Client {
             .header("origin", "https://sso.garmin.com")
             .form(&form_params)
             .query(&query_params)
-            .send().unwrap();
+            .send()
+            .unwrap();
         warn!("Logging in with {} {}", self.email, self.password);
         println!("status={:#?}", res.status());
         println!("text={:#?}", res.text());
