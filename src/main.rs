@@ -23,7 +23,25 @@ impl Client {
     }
 
     fn auth(&self) {
+        let form_params = [
+            ("username", &self.email),
+            ("password", &self.password),
+            ("embed", &false.to_string()),
+        ];
+        let query_params = [
+            ("service",  "https://connect.garmin.com/modern"),
+        ];
+
+        let client = reqwest::blocking::Client::new();
+        let res = client
+            .post("https://sso.garmin.com/sso/signin")
+            .header("origin", "https://sso.garmin.com")
+            .form(&form_params)
+            .query(&query_params)
+            .send().unwrap();
         warn!("Logging in with {} {}", self.email, self.password);
+        println!("status={:#?}", res.status());
+        println!("text={:#?}", res.text());
     }
 }
 
@@ -48,5 +66,5 @@ fn main() {
 
     let activities = client.list_activities();
 
-    info!("Activities: {:?}", activities);
+    info!("Activities: {:#?}", activities);
 }

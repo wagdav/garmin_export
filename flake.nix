@@ -15,6 +15,8 @@
         buildInputs = [
           pkgs.cargo
           pkgs.clippy
+          pkgs.openssl.dev
+          pkgs.pkg-config
           pkgs.rustc
           pkgs.rustfmt
         ];
