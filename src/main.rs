@@ -32,7 +32,7 @@ impl Client {
         ];
         let query_params = [("service", "https://connect.garmin.com/modern")];
 
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::blocking::Client::builder().cookie_store(true).build().unwrap();
         let res = client
             .post("https://sso.garmin.com/sso/signin")
             .header("origin", "https://sso.garmin.com")
@@ -42,10 +42,18 @@ impl Client {
             .unwrap(); // FIXME: should return Result
 
         info!("Extracting the ticket url");
-        let ticket_url = extract_ticket_url(&res.text().unwrap());
-        info!("ticket url={}", ticket_url);
-        let res = client.get(&ticket_url).send().unwrap();
+        let ticket = extract_ticket_url(&res.text().unwrap());
+        info!("ticket={}", ticket);
+
+        let query_params = [("ticket", ticket)];
+        let res = client
+            .get("https://connect.garmin.com/modern")
+            .query(&query_params)
+            .send()
+            .unwrap();
         println!("status={:#?}", res.status());
+
+        assert_eq!(res.status(), 200);
 
         info!("Pinging legacy endpoint");
         client
@@ -63,7 +71,9 @@ impl Client {
 
 fn extract_ticket_url(auth_response: &str) -> String {
     let re = Regex::new(r#"response_url\s*=\s*"(https:[^"]+)""#).unwrap();
-    re.captures_iter(auth_response).next().unwrap()[1].to_string().replace(r"\/", "/")
+    let url = re.captures_iter(auth_response).next().unwrap()[1].to_string();
+    let v: Vec<&str> = url.split("?ticket=").collect();
+    v[1].to_string()
 }
 
 #[cfg(test)]
@@ -82,7 +92,7 @@ mod tests {
         let auth_response = r#"response_url = "https:\/\/connect.garmin.com\/modern?ticket=ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas";"#;
         assert_eq!(
             extract_ticket_url(auth_response),
-            r#"https://connect.garmin.com/modern?ticket=ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas"#
+            "ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas"
         );
     }
 }
