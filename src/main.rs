@@ -1,5 +1,6 @@
-use env_logger;
 use log::{info, warn};
+use std::env;
+use std::process;
 
 struct Client {
     email: String,
@@ -56,12 +57,32 @@ mod tests {
     }
 }
 
+struct Config {
+    username: String,
+    password: String,
+}
+
+impl Config {
+    fn new(mut args: env::Args) -> Result<Self, &'static str> {
+        args.next();
+
+        let username = args.next().ok_or("Username is missing")?;
+        let password = args.next().ok_or("Password is missing")?;
+
+        Ok(Self { username, password })
+    }
+}
+
 fn main() {
     let env = env_logger::Env::default().filter_or("GARMIN_CONNECT_LOG_LEVEL", "info");
-
     env_logger::init_from_env(env);
 
-    let client = Client::new("john.doe@example.com", "password");
+    let config = Config::new(env::args()).unwrap_or_else(|err| {
+        eprintln!("Problem parsing arguments: {}", err);
+        process::exit(1);
+    });
+
+    let client = Client::new(&config.username.to_string(), &config.password.to_string());
 
     let activities = client.list_activities();
 
