@@ -1,4 +1,5 @@
 use log::{info, warn};
+use regex::Regex;
 use std::env;
 use std::process;
 
@@ -38,11 +39,31 @@ impl Client {
             .form(&form_params)
             .query(&query_params)
             .send()
+            .unwrap(); // FIXME: should return Result
+
+        info!("Extracting the ticket url");
+        let ticket_url = extract_ticket_url(&res.text().unwrap());
+        info!("ticket url={}", ticket_url);
+        let res = client.get(&ticket_url).send().unwrap();
+        println!("status={:#?}", res.status());
+
+        info!("Pinging legacy endpoint");
+        client
+            .get("https://connect.garmin.com/legacy/session")
+            .send()
             .unwrap();
-        warn!("Logging in with {} {}", self.email, self.password);
+
+        let query_params = [("start", 0.to_string()), ("limit", 10.to_string())];
+        let res = client.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities").query(&query_params).send().unwrap();
+
         println!("status={:#?}", res.status());
         println!("text={:#?}", res.text());
     }
+}
+
+fn extract_ticket_url(auth_response: &str) -> String {
+    let re = Regex::new(r#"response_url\s*=\s*"(https:[^"]+)""#).unwrap();
+    re.captures_iter(auth_response).next().unwrap()[1].to_string().replace(r"\/", "/")
 }
 
 #[cfg(test)]
@@ -54,6 +75,15 @@ mod tests {
         let client = Client::new("john.doe@example.com", "password");
         assert_eq!(client.email, "john.doe@example.com");
         assert_eq!(client.password, "password");
+    }
+
+    #[test]
+    fn parse_ticket() {
+        let auth_response = r#"response_url = "https:\/\/connect.garmin.com\/modern?ticket=ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas";"#;
+        assert_eq!(
+            extract_ticket_url(auth_response),
+            r#"https://connect.garmin.com/modern?ticket=ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas"#
+        );
     }
 }
 

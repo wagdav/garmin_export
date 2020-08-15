@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 env_logger = "0.7.1"
 log = "0.4.11"
+regex = "1"
 reqwest = { version="0.10.7", features=["blocking"] }
