@@ -7,7 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-env_logger = "0.7.1"
-log = "0.4.11"
+env_logger = "0.7"
+log = "0.4"
 regex = "1"
-reqwest = { version="0.10.7", features=["blocking", "cookies"] }
+reqwest = { version="0.10", features=["blocking", "cookies", "json"] }
+serde = "1.0"

@@ -1,5 +1,6 @@
 use log::{debug, info};
 use regex::Regex;
+use serde::Deserialize;
 use std::env;
 use std::process;
 
@@ -8,17 +9,24 @@ struct Client {
     password: String,
 }
 
-#[derive(Debug)]
-struct Activity;
+#[derive(Debug, Deserialize)]
+struct Activity {
+    #[serde(rename(deserialize = "activityId"))]
+    id: u64,
+
+    #[serde(rename(deserialize = "activityName"))]
+    name: String,
+
+    description: Option<String>,
+}
 
 // move this to errors.rs
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    InvalidArgument(String),
+    InvalidInput(String),
     RequestFailed(String),
-    Unauthorized,
     UnexpectedServerResponse,
 }
 
@@ -37,11 +45,10 @@ impl Client {
     }
 
     pub fn list_activities(&self) -> Result<Vec<Activity>> {
-        self.auth()?;
-        Ok(vec![Activity, Activity])
+        self.auth()
     }
 
-    fn auth(&self) -> Result<()> {
+    fn auth(&self) -> Result<Vec<Activity>> {
         let client = reqwest::blocking::Client::builder()
             .cookie_store(true)
             .build()?;
@@ -76,11 +83,10 @@ impl Client {
                 ("start", 0.to_string()),
                 ("limit", 10.to_string())
             ])
-            .send()?;
+            .send()?
+            .json()?;
 
-        println!("status={:#?}", res.status());
-
-        Ok(())
+        Ok(res)
     }
 }
 
@@ -128,10 +134,10 @@ impl Config {
 
         let username = args
             .next()
-            .ok_or(Error::InvalidArgument("Username is missing".to_string()))?;
+            .ok_or(Error::InvalidInput("Username is missing".to_string()))?;
         let password = args
             .next()
-            .ok_or(Error::InvalidArgument("Password is missing".to_string()))?;
+            .ok_or(Error::InvalidInput("Password is missing".to_string()))?;
 
         Ok(Self { username, password })
     }
