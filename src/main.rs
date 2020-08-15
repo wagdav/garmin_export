@@ -4,11 +4,6 @@ use serde::Deserialize;
 use std::env;
 use std::process;
 
-struct Client {
-    email: String,
-    password: String,
-}
-
 #[derive(Debug, Deserialize)]
 struct Activity {
     #[serde(rename(deserialize = "activityId"))]
@@ -36,37 +31,47 @@ impl From<reqwest::Error> for Error {
     }
 }
 
+struct Client {
+    http: reqwest::blocking::Client,
+}
+
 impl Client {
-    pub fn new(email: &str, password: &str) -> Self {
-        Client {
-            email: email.to_string(),
-            password: password.to_string(),
-        }
+    pub fn new(email: &str, password: &str) -> Result<Self> {
+        let http = Self::auth(email, password)?;
+        Ok(Self { http })
     }
 
     pub fn list_activities(&self) -> Result<Vec<Activity>> {
-        self.auth()
+        self.http
+            .get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities")
+            .query(&[
+                ("start", 0.to_string()),
+                ("limit", 1.to_string())
+            ])
+            .send()?
+            .json()
+            .map_err(|_| Error::UnexpectedServerResponse)
     }
 
-    fn auth(&self) -> Result<Vec<Activity>> {
-        let client = reqwest::blocking::Client::builder()
+    fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
+        let http = reqwest::blocking::Client::builder()
             .cookie_store(true)
             .build()?;
 
-        let res = client
+        let res = http
             .post("https://sso.garmin.com/sso/signin")
             .header("origin", "https://sso.garmin.com")
             .query(&[("service", "https://connect.garmin.com/modern")])
             .form(&[
-                ("username", &self.email),
-                ("password", &self.password),
+                ("username", username),
+                ("password", password),
                 ("embed", &false.to_string()),
             ])
             .send()?;
 
         debug!("Claiming the authentication toket");
         let ticket = extract_ticket_url(&res.text()?)?;
-        let res = client
+        let res = http
             .get("https://connect.garmin.com/modern")
             .query(&[("ticket", ticket)])
             .send()?;
@@ -74,19 +79,10 @@ impl Client {
         assert_eq!(res.status(), 200);
 
         debug!("Pinging legacy endpoint");
-        client
-            .get("https://connect.garmin.com/legacy/session")
+        http.get("https://connect.garmin.com/legacy/session")
             .send()?;
 
-        let res = client.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities")
-            .query(&[
-                ("start", 0.to_string()),
-                ("limit", 10.to_string())
-            ])
-            .send()?
-            .json()?;
-
-        Ok(res)
+        Ok(http)
     }
 }
 
@@ -152,7 +148,11 @@ fn main() {
         process::exit(1);
     });
 
-    let client = Client::new(&config.username.to_string(), &config.password.to_string());
+    let client = Client::new(&config.username.to_string(), &config.password.to_string())
+        .unwrap_or_else(|err| {
+            eprintln!("Cannot connect to connect.garmin.com {:?}", err);
+            process::exit(1);
+        });
 
     let activities = client.list_activities().unwrap_or_else(|err| {
         eprintln!("Error listing the activities: {:?}", err);
