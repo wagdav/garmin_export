@@ -1,4 +1,4 @@
-use log::{info, warn};
+use log::{debug, info};
 use regex::Regex;
 use std::env;
 use std::process;
@@ -11,6 +11,23 @@ struct Client {
 #[derive(Debug)]
 struct Activity;
 
+// move this to errors.rs
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    InvalidArgument(String),
+    RequestFailed(String),
+    Unauthorized,
+    UnexpectedServerResponse,
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(error: reqwest::Error) -> Self {
+        Error::RequestFailed(error.to_string())
+    }
+}
+
 impl Client {
     pub fn new(email: &str, password: &str) -> Self {
         Client {
@@ -19,61 +36,64 @@ impl Client {
         }
     }
 
-    pub fn list_activities(&self) -> Vec<Activity> {
-        self.auth();
-        vec![Activity, Activity]
+    pub fn list_activities(&self) -> Result<Vec<Activity>> {
+        self.auth()?;
+        Ok(vec![Activity, Activity])
     }
 
-    fn auth(&self) {
-        let form_params = [
-            ("username", &self.email),
-            ("password", &self.password),
-            ("embed", &false.to_string()),
-        ];
-        let query_params = [("service", "https://connect.garmin.com/modern")];
+    fn auth(&self) -> Result<()> {
+        let client = reqwest::blocking::Client::builder()
+            .cookie_store(true)
+            .build()?;
 
-        let client = reqwest::blocking::Client::builder().cookie_store(true).build().unwrap();
         let res = client
             .post("https://sso.garmin.com/sso/signin")
             .header("origin", "https://sso.garmin.com")
-            .form(&form_params)
-            .query(&query_params)
-            .send()
-            .unwrap(); // FIXME: should return Result
+            .query(&[("service", "https://connect.garmin.com/modern")])
+            .form(&[
+                ("username", &self.email),
+                ("password", &self.password),
+                ("embed", &false.to_string()),
+            ])
+            .send()?;
 
-        info!("Extracting the ticket url");
-        let ticket = extract_ticket_url(&res.text().unwrap());
-        info!("ticket={}", ticket);
-
-        let query_params = [("ticket", ticket)];
+        debug!("Claiming the authentication toket");
+        let ticket = extract_ticket_url(&res.text()?)?;
         let res = client
             .get("https://connect.garmin.com/modern")
-            .query(&query_params)
-            .send()
-            .unwrap();
-        println!("status={:#?}", res.status());
+            .query(&[("ticket", ticket)])
+            .send()?;
 
         assert_eq!(res.status(), 200);
 
-        info!("Pinging legacy endpoint");
+        debug!("Pinging legacy endpoint");
         client
             .get("https://connect.garmin.com/legacy/session")
-            .send()
-            .unwrap();
+            .send()?;
 
-        let query_params = [("start", 0.to_string()), ("limit", 10.to_string())];
-        let res = client.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities").query(&query_params).send().unwrap();
+        let res = client.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities")
+            .query(&[
+                ("start", 0.to_string()),
+                ("limit", 10.to_string())
+            ])
+            .send()?;
 
         println!("status={:#?}", res.status());
-        println!("text={:#?}", res.text());
+
+        Ok(())
     }
 }
 
-fn extract_ticket_url(auth_response: &str) -> String {
+fn extract_ticket_url(auth_response: &str) -> Result<String> {
     let re = Regex::new(r#"response_url\s*=\s*"(https:[^"]+)""#).unwrap();
-    let url = re.captures_iter(auth_response).next().unwrap()[1].to_string();
-    let v: Vec<&str> = url.split("?ticket=").collect();
-    v[1].to_string()
+
+    let matches = re
+        .captures_iter(auth_response)
+        .next()
+        .ok_or(Error::UnexpectedServerResponse)?;
+    let first_match = matches[1].to_string();
+    let v: Vec<&str> = first_match.split("?ticket=").collect();
+    Ok(v[1].to_string())
 }
 
 #[cfg(test)]
@@ -92,8 +112,8 @@ mod tests {
         let auth_response = r#"response_url = "https:\/\/connect.garmin.com\/modern?ticket=ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas";"#;
         assert_eq!(
             extract_ticket_url(auth_response),
-            "ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas"
-        );
+            Ok("ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas".to_string())
+        )
     }
 }
 
@@ -103,11 +123,15 @@ struct Config {
 }
 
 impl Config {
-    fn new(mut args: env::Args) -> Result<Self, &'static str> {
+    fn new(mut args: env::Args) -> Result<Self> {
         args.next();
 
-        let username = args.next().ok_or("Username is missing")?;
-        let password = args.next().ok_or("Password is missing")?;
+        let username = args
+            .next()
+            .ok_or(Error::InvalidArgument("Username is missing".to_string()))?;
+        let password = args
+            .next()
+            .ok_or(Error::InvalidArgument("Password is missing".to_string()))?;
 
         Ok(Self { username, password })
     }
@@ -118,13 +142,16 @@ fn main() {
     env_logger::init_from_env(env);
 
     let config = Config::new(env::args()).unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {}", err);
+        eprintln!("Problem parsing arguments: {:?}", err);
         process::exit(1);
     });
 
     let client = Client::new(&config.username.to_string(), &config.password.to_string());
 
-    let activities = client.list_activities();
+    let activities = client.list_activities().unwrap_or_else(|err| {
+        eprintln!("Error listing the activities: {:?}", err);
+        process::exit(1);
+    });
 
     info!("Activities: {:#?}", activities);
 }
