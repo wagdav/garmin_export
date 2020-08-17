@@ -81,13 +81,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let client = Client::new("john.doe@example.com", "password");
-        assert_eq!(client.email, "john.doe@example.com");
-        assert_eq!(client.password, "password");
-    }
-
-    #[test]
     fn parse_ticket() {
         let auth_response = r#"response_url = "https:\/\/connect.garmin.com\/modern?ticket=ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas";"#;
         assert_eq!(
