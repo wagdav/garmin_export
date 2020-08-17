@@ -24,7 +24,7 @@ impl Client {
             .get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities")
             .query(&[
                 ("start", 0.to_string()),
-                ("limit", 1.to_string())
+                ("limit", 5.to_string())
             ])
             .send()?
             .json()
