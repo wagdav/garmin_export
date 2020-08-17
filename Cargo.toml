@@ -1,5 +1,5 @@
 [package]
-name = "garmin-connect"
+name = "garmin_export"
 version = "0.1.0"
 authors = ["David Wagner <wagdav@gmail.com>"]
 edition = "2018"

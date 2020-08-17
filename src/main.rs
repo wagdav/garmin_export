@@ -10,7 +10,7 @@ use std::env;
 use std::process;
 
 fn main() {
-    let env = env_logger::Env::default().filter_or("GARMIN_CONNECT_LOG_LEVEL", "info");
+    let env = env_logger::Env::default().filter_or("GARMIN_EXPORT_LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
     let config = Config::new(env::args()).unwrap_or_else(|err| {
