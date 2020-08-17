@@ -15,7 +15,7 @@ pub struct Client {
 
 impl Client {
     pub fn new(email: &str, password: &str) -> Result<Self> {
-        let http = Self::auth(email, password)?;
+        let http = auth(email, password)?;
         Ok(Self { http })
     }
 
@@ -30,38 +30,38 @@ impl Client {
             .json()
             .map_err(|_| Error::UnexpectedServerResponse)
     }
+}
 
-    fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
-        let http = reqwest::blocking::Client::builder()
-            .cookie_store(true)
-            .build()?;
+fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
+    let http = reqwest::blocking::Client::builder()
+        .cookie_store(true)
+        .build()?;
 
-        let res = http
-            .post("https://sso.garmin.com/sso/signin")
-            .header("origin", "https://sso.garmin.com")
-            .query(&[("service", "https://connect.garmin.com/modern")])
-            .form(&[
-                ("username", username),
-                ("password", password),
-                ("embed", &false.to_string()),
-            ])
-            .send()?;
+    let res = http
+        .post("https://sso.garmin.com/sso/signin")
+        .header("origin", "https://sso.garmin.com")
+        .query(&[("service", "https://connect.garmin.com/modern")])
+        .form(&[
+            ("username", username),
+            ("password", password),
+            ("embed", &false.to_string()),
+        ])
+        .send()?;
 
-        debug!("Claiming the authentication toket");
-        let ticket = extract_ticket_url(&res.text()?)?;
-        let res = http
-            .get("https://connect.garmin.com/modern")
-            .query(&[("ticket", ticket)])
-            .send()?;
+    debug!("Claiming the authentication toket");
+    let ticket = extract_ticket_url(&res.text()?)?;
+    let res = http
+        .get("https://connect.garmin.com/modern")
+        .query(&[("ticket", ticket)])
+        .send()?;
 
-        assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), 200);
 
-        debug!("Pinging legacy endpoint");
-        http.get("https://connect.garmin.com/legacy/session")
-            .send()?;
+    debug!("Pinging legacy endpoint");
+    http.get("https://connect.garmin.com/legacy/session")
+        .send()?;
 
-        Ok(http)
-    }
+    Ok(http)
 }
 
 fn extract_ticket_url(auth_response: &str) -> Result<String> {
