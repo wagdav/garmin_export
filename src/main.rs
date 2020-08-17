@@ -18,7 +18,7 @@ fn main() {
         process::exit(1);
     });
 
-    let client = Client::new(&config.username.to_string(), &config.password.to_string())
+    let client = Client::new(&config.username, &config.password)
         .unwrap_or_else(|err| {
             eprintln!("Cannot connect to connect.garmin.com {:?}", err);
             process::exit(1);
