@@ -1,11 +1,11 @@
-use crate::activity::Activity;
+use crate::activity::{Activity, ActivityId};
 use crate::error::{Error, Result};
 use log::debug;
 use regex::Regex;
 
 impl From<reqwest::Error> for Error {
     fn from(error: reqwest::Error) -> Self {
-        Error::RequestFailed(error.to_string())
+        Error::IOError(error.to_string())
     }
 }
 
@@ -29,6 +29,20 @@ impl Client {
             .send()?
             .json()
             .map_err(|_| Error::UnexpectedServerResponse)
+    }
+
+    pub fn download_activity(&self, id: ActivityId) -> Result<Vec<u8>> {
+        let mut buf = vec![];
+
+        self.http
+            .get(&format!(
+                "https://connect.garmin.com/modern/proxy/download-service/files/activity/{}",
+                id
+            ))
+            .send()?
+            .copy_to(&mut buf)?;
+
+        Ok(buf)
     }
 }
 

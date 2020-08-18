@@ -5,8 +5,10 @@ mod error;
 
 use client::Client;
 use config::Config;
-use log::info;
+use error::*;
+use log::*;
 use std::env;
+use std::fs;
 use std::process;
 
 fn main() {
@@ -14,19 +16,34 @@ fn main() {
     env_logger::init_from_env(env);
 
     let config = Config::new(env::args()).unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {:?}", err);
+        error!("Problem parsing arguments: {:?}", err);
         process::exit(1);
     });
 
-    let client = Client::new(&config.username, &config.password).unwrap_or_else(|err| {
-        eprintln!("Cannot connect to connect.garmin.com {:?}", err);
+    download_activities(config).unwrap_or_else(|err| {
+        error!("Couldn't download activities: {:?}", err);
         process::exit(1);
     });
+}
 
-    let activities = client.list_activities().unwrap_or_else(|err| {
-        eprintln!("Error listing the activities: {:?}", err);
-        process::exit(1);
-    });
+fn download_activities(config: Config) -> Result<()> {
+    let client = Client::new(&config.username, &config.password)?;
 
-    info!("Activities: {:#?}", activities);
+    let activities = client.list_activities()?;
+    debug!("Activities: {:#?}", activities);
+
+    for activity in activities.iter() {
+        info!("Downloading original activity {}", activity.id());
+        let zip = client.download_activity(activity.id())?;
+        let fname = format!("{}.zip", activity.id());
+        fs::write(fname, zip.as_slice())?;
+    }
+
+    Ok(())
+}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Error::IOError(error.to_string())
+    }
 }

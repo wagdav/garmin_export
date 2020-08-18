@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
+pub type ActivityId = u64;
+
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Activity {
     #[serde(rename(deserialize = "activityId"))]
-    id: u64,
+    id: ActivityId,
 
     #[serde(rename(deserialize = "activityName"))]
     name: String,
@@ -14,6 +16,12 @@ pub struct Activity {
     #[serde(rename(deserialize = "startTimeGMT"))]
     #[serde(deserialize_with = "datetime::deserialize")]
     start_time_gmt: DateTime<Utc>,
+}
+
+impl Activity {
+    pub fn id(&self) -> ActivityId {
+        self.id
+    }
 }
 
 mod datetime {
