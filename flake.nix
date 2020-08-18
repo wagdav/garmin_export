@@ -1,25 +1,65 @@
 {
-  description = "A very basic flake";
+  description = "Export FIT files from Garmin Connect";
+
+  inputs.nixpkgs.url = "nixpkgs/nixos-20.03";
 
   outputs = { self, nixpkgs }:
+
     let
 
-      pkgs = import nixpkgs {
-        system = "x86_64-linux";
-      };
+      supportedSystems = [ "x86_64-linux" ];
+      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
 
     in
 
     {
-      devShell.x86_64-linux = pkgs.mkShell {
-        buildInputs = [
-          pkgs.cargo
-          pkgs.clippy
-          pkgs.openssl.dev
-          pkgs.pkg-config
-          pkgs.rustc
-          pkgs.rustfmt
-        ];
+      overlay = final: prev: {
+        garmin_export = final.rustPlatform.buildRustPackage rec {
+          pname = "garmin_export";
+          version = "0.1.0";
+
+          src = builtins.path {
+            path = ./.;
+            name = pname;
+            filter = final.lib.cleanSourceFilter;
+          };
+
+          cargoSha256 = "sha256-bAl7jYVrKBEPLbMCTkpVMNqlbOygKcWpHMkWGomSpEQ=";
+
+          buildInputs = [
+            final.openssl.dev
+            final.pkg-config
+          ];
+        };
       };
+
+      devShell = forAllSystems (system:
+        with import nixpkgs { inherit system; };
+
+        mkShell {
+          buildInputs = [
+            cargo
+            clippy
+            openssl.dev
+            pkg-config
+            rustc
+            rustfmt
+          ];
+        }
+      );
+
+      defaultPackage = forAllSystems (system:
+        (import nixpkgs {
+          inherit system;
+          overlays = [ self.overlay ];
+        }).garmin_export
+      );
+
+      defaultApp = forAllSystems (system:
+        {
+          type = "app";
+          program = "${self.defaultPackage.${system}}/bin/garmin_export";
+        }
+      );
     };
 }
