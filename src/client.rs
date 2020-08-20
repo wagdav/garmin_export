@@ -20,20 +20,26 @@ impl Client {
     }
 
     pub fn list_activities(&self) -> Result<Vec<Activity>> {
-        self.http
+        debug!("Listing  activities");
+        let response = self.http
             .get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities")
             .query(&[
                 ("start", 0.to_string()),
                 ("limit", 5.to_string())
             ])
-            .send()?
-            .json()
-            .map_err(|_| Error::UnexpectedServerResponse)
+            .send()?;
+
+        let activities = response.json()
+            .map_err(|_| Error::UnexpectedServerResponse);
+
+        debug!("Activities: {:#?}", activities);
+        activities
     }
 
     pub fn download_activity(&self, id: ActivityId) -> Result<Vec<u8>> {
         let mut buf = vec![];
 
+        debug!("Downloading activity {}", id);
         self.http
             .get(&format!(
                 "https://connect.garmin.com/modern/proxy/download-service/files/activity/{}",

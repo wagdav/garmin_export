@@ -30,10 +30,8 @@ fn download_activities(config: Config) -> Result<()> {
     let client = Client::new(&config.username, &config.password)?;
 
     let activities = client.list_activities()?;
-    debug!("Activities: {:#?}", activities);
 
     for activity in activities.iter() {
-        info!("Downloading original activity {}", activity.id());
         let zip = client.download_activity(activity.id())?;
         let fname = format!("{}.zip", activity.id());
         fs::write(fname, zip.as_slice())?;
