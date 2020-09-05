@@ -32,18 +32,22 @@ impl Client {
     }
 
     pub fn download_activity(&self, id: ActivityId) -> Result<Vec<u8>> {
-        let mut buf = vec![];
-
         debug!("Downloading activity {}", id);
-        self.http
+        let mut response = self
+            .http
             .get(&format!(
                 "https://connect.garmin.com/modern/proxy/download-service/files/activity/{}",
                 id
             ))
-            .send()?
-            .copy_to(&mut buf)?;
+            .send()?;
 
-        Ok(unzip(buf))
+        if response.status() == reqwest::StatusCode::OK {
+            let mut buf = vec![];
+            response.copy_to(&mut buf)?;
+            Ok(unzip(buf))
+        } else {
+            Err(Error::IOError("Something went wrong".to_string()))
+        }
     }
 }
 
