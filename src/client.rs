@@ -41,7 +41,7 @@ impl Client {
             .send()?
             .copy_to(&mut buf)?;
 
-        Ok(buf)
+        Ok(unzip(buf))
     }
 }
 
@@ -101,4 +101,20 @@ mod tests {
             Ok("ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas".to_string())
         )
     }
+}
+
+/// Decompress the contents of the provided buffer
+fn unzip(buf: Vec<u8>) -> Vec<u8> {
+    use std::io::prelude::*;
+
+    let reader = std::io::Cursor::new(buf);
+    let mut zip = zip::ZipArchive::new(reader).unwrap();
+
+    assert_eq!(zip.len(), 1);
+    let mut file = zip.by_index(0).unwrap();
+
+    let mut buffer = vec![];
+    file.read_to_end(&mut buffer).unwrap();
+
+    buffer
 }
