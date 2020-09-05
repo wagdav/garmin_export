@@ -1,6 +1,6 @@
 use crate::activity::{Activity, ActivityId};
 use crate::error::{Error, Result};
-use log::debug;
+use log::*;
 use regex::Regex;
 
 pub struct Client {
