@@ -53,6 +53,7 @@ impl Client {
 
 fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
     let http = reqwest::blocking::Client::builder()
+        .redirect(reqwest::redirect::Policy::limited(20))
         .cookie_store(true)
         .build()?;
 
@@ -69,10 +70,7 @@ fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
 
     debug!("Claiming the authentication toket");
     let ticket = extract_ticket_url(&res.text()?)?;
-    let res = http
-        .get("https://connect.garmin.com/modern")
-        .query(&[("ticket", ticket)])
-        .send()?;
+    let res = http.get(&ticket).send()?;
 
     assert_eq!(res.status(), 200);
 
@@ -88,9 +86,8 @@ fn extract_ticket_url(auth_response: &str) -> Result<String> {
         .ok_or(Error::InvalidInput(
             "Cannot extract the ticket url".to_string(),
         ))?;
-    let first_match = matches[1].to_string();
-    let v: Vec<&str> = first_match.split("?ticket=").collect();
-    Ok(v[1].to_string())
+
+    Ok(matches[1].to_string().replace("\\", ""))
 }
 
 #[cfg(test)]
@@ -102,7 +99,10 @@ mod tests {
         let auth_response = r#"response_url = "https:\/\/connect.garmin.com\/modern?ticket=ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas";"#;
         assert_eq!(
             extract_ticket_url(auth_response),
-            Ok("ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas".to_string())
+            Ok(
+                "https://connect.garmin.com/modern?ticket=ST-0123456-aBCDefgh1iJkLmN5opQ9R-cas"
+                    .to_string()
+            )
         )
     }
 }
