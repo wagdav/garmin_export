@@ -31,7 +31,7 @@ fn download_activities(config: Config) -> Result<()> {
 
     for activity in client.list_activities()?.iter() {
         let zip = client.download_activity(activity.id())?;
-        let fname = format!("{}.zip", activity.id());
+        let fname = format!("{}.fit", activity.id());
         fs::write(fname, zip.as_slice())?;
     }
 
