@@ -23,6 +23,8 @@ impl Client {
             ])
             .send()?;
 
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+
         let activities = response.json().map_err(|_| Error::UnexpectedServerResponse);
 
         debug!("Activities: {:#?}", activities);
