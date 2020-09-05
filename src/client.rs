@@ -70,10 +70,6 @@ fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
 
     assert_eq!(res.status(), 200);
 
-    debug!("Pinging legacy endpoint");
-    http.get("https://connect.garmin.com/legacy/session")
-        .send()?;
-
     Ok(http)
 }
 
