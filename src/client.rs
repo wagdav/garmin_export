@@ -3,12 +3,6 @@ use crate::error::{Error, Result};
 use log::debug;
 use regex::Regex;
 
-impl From<reqwest::Error> for Error {
-    fn from(error: reqwest::Error) -> Self {
-        Error::IOError(error.to_string())
-    }
-}
-
 pub struct Client {
     http: reqwest::blocking::Client,
 }
