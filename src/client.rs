@@ -85,7 +85,9 @@ fn extract_ticket_url(auth_response: &str) -> Result<String> {
     let matches = re
         .captures_iter(auth_response)
         .next()
-        .ok_or(Error::UnexpectedServerResponse)?;
+        .ok_or(Error::InvalidInput(
+            "Cannot extract the ticket url".to_string(),
+        ))?;
     let first_match = matches[1].to_string();
     let v: Vec<&str> = first_match.split("?ticket=").collect();
     Ok(v[1].to_string())
