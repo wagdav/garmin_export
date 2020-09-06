@@ -24,3 +24,4 @@ Garmin Connect.
 
 * [garminexport](https://github.com/petergardfjall/garminexport)
 * [python-garminconnect](https://github.com/cyberjunky/python-garminconnect)
+* [tapiriik](https://github.com/cpfair/tapiriik)

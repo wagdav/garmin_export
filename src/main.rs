@@ -2,6 +2,7 @@ mod activity;
 mod client;
 mod config;
 mod error;
+mod rate_limiter;
 
 use client::Client;
 use config::Config;

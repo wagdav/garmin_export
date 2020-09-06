@@ -5,6 +5,7 @@ pub enum Error {
     InvalidInput(String),
     IOError(String),
     UnexpectedServerResponse,
+    Forbidden,
 }
 
 impl From<reqwest::Error> for Error {
