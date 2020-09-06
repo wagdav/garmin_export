@@ -18,3 +18,9 @@ impl From<std::io::Error> for Error {
         Error::IOError(error.to_string())
     }
 }
+
+impl From<zip::result::ZipError> for Error {
+    fn from(error: zip::result::ZipError) -> Self {
+        Error::IOError(error.to_string())
+    }
+}
