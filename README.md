@@ -17,8 +17,10 @@ To run:
 nix develop --command cargo run <USERNAME> <PASSWORD>
 ```
 
-## Acknowledgement
+## Acknowledgements
 
-I read the Python source code of Peter Gardfjäll's
-[garminexport](https://github.com/petergardfjall/garminexport) project to
-understand the idiosyncratic API of Garmin Connect.
+I read the source code of these projects to understand the idiosyncratic API of
+Garmin Connect.
+
+* [garminexport](https://github.com/petergardfjall/garminexport)
+* [python-garminconnect](https://github.com/cyberjunky/python-garminconnect)
