@@ -68,6 +68,8 @@ fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
         ])
         .send()?;
 
+    assert_eq!(res.status(), 200);
+
     debug!("Claiming the authentication toket");
     let ticket = extract_ticket_url(&res.text()?)?;
     let res = http.get(&ticket).send()?;
