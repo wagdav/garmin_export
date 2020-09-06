@@ -14,8 +14,25 @@ const SIGNIN_URL: &str = "https://sso.garmin.com/sso/signin";
 
 impl Client {
     pub fn new(email: &str, password: &str) -> Result<Self> {
-        let http = auth(email, password)?;
-        Ok(Self { http })
+        use reqwest::{blocking, header, redirect};
+
+        let mut headers = header::HeaderMap::new();
+        headers.insert(
+            header::ORIGIN,
+            header::HeaderValue::from_static("https://sso.garmin.com"),
+        );
+
+        let http = blocking::Client::builder()
+            .redirect(redirect::Policy::limited(20))
+            .default_headers(headers)
+            .cookie_store(true)
+            .build()?;
+
+        let client = Self { http };
+
+        client.auth(email, password)?;
+
+        Ok(client)
     }
 
     pub fn list_activities(&self) -> Result<Vec<Activity>> {
@@ -54,72 +71,58 @@ impl Client {
             Err(Error::IOError("Something went wrong".to_string()))
         }
     }
-}
 
-fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
-    use reqwest::{blocking, header, redirect};
+    fn auth(&self, username: &str, password: &str) -> Result<()> {
+        let params = [
+            ("service", MODERN_URL),
+            ("webhost", BASE_URL),
+            ("source", SIGNIN_URL),
+            ("redirectAfterAccountLoginUrl", MODERN_URL),
+            ("redirectAfterAccountCreationUrl", MODERN_URL),
+            ("gauthHost", SSO_URL),
+            ("locale", "en_US"),
+            ("id", "gauth-widget"),
+            (
+                "cssUrl",
+                "https://static.garmincdn.com/com.garmin.connect/ui/css/gauth-custom-v1.2-min.css",
+            ),
+            ("clientId", "GarminConnect"),
+            ("rememberMeShown", "true"),
+            ("rememberMeChecked", "false"),
+            ("createAccountShown", "true"),
+            ("openCreateAccount", "false"),
+            ("usernameShown", "false"),
+            ("displayNameShown", "false"),
+            ("consumeServiceTicket", "false"),
+            ("initialFocus", "true"),
+            ("embedWidget", "false"),
+            ("generateExtraServiceTicket", "false"),
+        ];
 
-    let mut headers = header::HeaderMap::new();
-    headers.insert(
-        header::ORIGIN,
-        header::HeaderValue::from_static("https://sso.garmin.com"),
-    );
+        let res = self.http
+            .post(SIGNIN_URL)
+            .query(&params)
+            .form(&[
+                ("username", username),
+                ("password", password),
+                ("embed", &true.to_string()),
+                ("lt", "e1s1"),
+                ("_eventid", "submit"),
+                ("_displayNameRequired", &false.to_string()),
+            ])
+            .send()?;
 
-    let http = blocking::Client::builder()
-        .redirect(redirect::Policy::limited(20))
-        .default_headers(headers)
-        .cookie_store(true)
-        .build()?;
+        assert_eq!(res.status(), 200);
 
-    let params = [
-        ("service", MODERN_URL),
-        ("webhost", BASE_URL),
-        ("source", SIGNIN_URL),
-        ("redirectAfterAccountLoginUrl", MODERN_URL),
-        ("redirectAfterAccountCreationUrl", MODERN_URL),
-        ("gauthHost", SSO_URL),
-        ("locale", "en_US"),
-        ("id", "gauth-widget"),
-        (
-            "cssUrl",
-            "https://static.garmincdn.com/com.garmin.connect/ui/css/gauth-custom-v1.2-min.css",
-        ),
-        ("clientId", "GarminConnect"),
-        ("rememberMeShown", "true"),
-        ("rememberMeChecked", "false"),
-        ("createAccountShown", "true"),
-        ("openCreateAccount", "false"),
-        ("usernameShown", "false"),
-        ("displayNameShown", "false"),
-        ("consumeServiceTicket", "false"),
-        ("initialFocus", "true"),
-        ("embedWidget", "false"),
-        ("generateExtraServiceTicket", "false"),
-    ];
+        let ticket = extract_ticket_url(&res.text()?)?;
 
-    let res = http
-        .post(SIGNIN_URL)
-        .query(&params)
-        .form(&[
-            ("username", username),
-            ("password", password),
-            ("embed", &true.to_string()),
-            ("lt", "e1s1"),
-            ("_eventid", "submit"),
-            ("_displayNameRequired", &false.to_string()),
-        ])
-        .send()?;
+        debug!("Claiming the authentication token at {}", ticket);
+        let res = self.http.get(&ticket).send()?;
 
-    assert_eq!(res.status(), 200);
+        assert_eq!(res.status(), 200);
 
-    let ticket = extract_ticket_url(&res.text()?)?;
-
-    debug!("Claiming the authentication token at {}", ticket);
-    let res = http.get(&ticket).send()?;
-
-    assert_eq!(res.status(), 200);
-
-    Ok(http)
+        Ok(())
+    }
 }
 
 fn extract_ticket_url(auth_response: &str) -> Result<String> {
