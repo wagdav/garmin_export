@@ -61,7 +61,7 @@ fn auth(username: &str, password: &str) -> Result<reqwest::blocking::Client> {
 
     let mut headers = header::HeaderMap::new();
     headers.insert(
-        header::HeaderName::from_static("origin"),
+        header::ORIGIN,
         header::HeaderValue::from_static("https://sso.garmin.com"),
     );
 
