@@ -4,13 +4,21 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     InvalidInput(String),
     IOError(String),
-    UnexpectedServerResponse,
+    APIError(String),
     Forbidden,
 }
 
 impl From<reqwest::Error> for Error {
     fn from(error: reqwest::Error) -> Self {
-        Error::IOError(error.to_string())
+        error
+            .status()
+            .map_or(Error::APIError(error.to_string()), |status| {
+                if status == reqwest::StatusCode::FORBIDDEN {
+                    Error::Forbidden
+                } else {
+                    Error::APIError(error.to_string())
+                }
+            })
     }
 }
 

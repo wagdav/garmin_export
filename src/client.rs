@@ -2,7 +2,7 @@ use crate::activity::{Activity, ActivityId};
 use crate::error::{Error, Result};
 use crate::rate_limiter::RateLimiter;
 use log::*;
-use reqwest::{blocking, header, redirect, StatusCode};
+use reqwest::{blocking, header, redirect};
 
 pub struct Client {
     http: blocking::Client,
@@ -54,18 +54,18 @@ impl Client {
                 ("start", 0.to_string()),
                 ("limit", 3.to_string())
             ])
-            .send()?;
+            .send()?
+            .error_for_status()?;
 
-        if response.status() == StatusCode::OK {
-            let activities = response.json().map_err(|_| Error::UnexpectedServerResponse);
+        let activities = response.json().map_err(|error| {
+            Error::APIError(format!(
+                "Cannot decode the activity list response: {}",
+                error
+            ))
+        });
 
-            debug!("Activities: {:#?}", activities);
-            activities
-        } else if response.status() == StatusCode::FORBIDDEN {
-            Err(Error::Forbidden)
-        } else {
-            Err(Error::UnexpectedServerResponse)
-        }
+        debug!("Activities: {:#?}", activities);
+        activities
     }
 
     pub fn download_activity(&self, id: ActivityId) -> Result<Vec<u8>> {
@@ -88,17 +88,13 @@ impl Client {
                 "{}/proxy/download-service/files/activity/{}",
                 MODERN_URL, id
             ))
-            .send()?;
+            .send()?
+            .error_for_status()?;
 
-        if response.status() == StatusCode::OK {
-            let mut buf = vec![];
-            response.copy_to(&mut buf)?;
-            Ok(unzip(&buf)?)
-        } else if response.status() == StatusCode::FORBIDDEN {
-            Err(Error::Forbidden)
-        } else {
-            Err(Error::IOError("Something went wrong".to_string()))
-        }
+        let mut buf = vec![];
+        response.copy_to(&mut buf)?;
+
+        Ok(unzip(&buf)?)
     }
 
     fn auth(&self) -> Result<()> {
@@ -119,21 +115,23 @@ impl Client {
         ];
 
         self.limiter.wait();
-        let res = self.http.get(SIGNIN_URL).query(&params).send()?;
-        res.error_for_status()?;
+        self.http
+            .get(SIGNIN_URL)
+            .query(&params)
+            .send()?
+            .error_for_status()?;
 
         self.limiter.wait();
-        let res = self
-            .http
+        self.http
             .post(SIGNIN_URL)
             .header(header::ORIGIN, "https://sso.garmin.com")
             .query(&params)
             .form(&data)
-            .send()?;
-        res.error_for_status()?;
+            .send()?
+            .error_for_status()?;
 
         self.limiter.wait();
-        let res = self.http.get(MODERN_URL).send()?;
+        let res = self.http.get(MODERN_URL).send()?.error_for_status()?;
         assert!(res.status().is_redirection());
 
         let mut next_url = res.headers().get(header::LOCATION).unwrap().clone();
@@ -141,7 +139,11 @@ impl Client {
             debug!("Redirecting to {:?}", next_url);
 
             self.limiter.wait();
-            let response = self.http.get(next_url.to_str().unwrap()).send()?;
+            let response = self
+                .http
+                .get(next_url.to_str().unwrap())
+                .send()?
+                .error_for_status()?;
 
             if response.status().is_success() {
                 break;
