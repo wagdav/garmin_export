@@ -11,7 +11,6 @@ pub struct Client {
     limiter: RateLimiter,
 }
 
-const SSO_URL: &str = "https://sso.garmin.com/sso";
 const MODERN_URL: &str = "https://connect.garmin.com/modern";
 const SIGNIN_URL: &str = "https://sso.garmin.com/sso/signin";
 
@@ -99,19 +98,13 @@ impl Client {
 
     fn auth(&self) -> Result<()> {
         let params = [
-            ("clientId", "GarminConnect"),
-            ("consumeServiceTicket", "false"),
-            ("gauthHost", SSO_URL),
             ("service", MODERN_URL),
         ];
 
         let data = [
             ("username", self.email.as_str()),
             ("password", self.password.as_str()),
-            ("embed", "true"),
-            ("lt", "e1s1"),
-            ("_eventId", "submit"),
-            ("displayNameRequired", "false"),
+            ("embed", "false"),
         ];
 
         self.limiter.wait();
