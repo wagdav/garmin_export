@@ -34,13 +34,21 @@ impl Client {
     }
 
     pub fn list_activities(&self) -> Result<Vec<Activity>> {
-        let result = self._list_activities();
-        if let Err(Error::Forbidden) = result {
-            warn!("Got 403, trying to login again and repeat the query");
-            self.auth()?;
-            self._list_activities()
-        } else {
-            result
+        let mut trials = 3;
+        loop {
+            let result = self._list_activities();
+
+            if let Err(Error::Forbidden) = result {
+                warn!("Got 403, trying to login again and repeat the query");
+                if trials > 0 {
+                    self.auth()?;
+                    trials = trials - 1;
+                } else {
+                    return Err(Error::Forbidden)
+                }
+            } else {
+                return result
+            }
         }
     }
 
@@ -68,13 +76,21 @@ impl Client {
     }
 
     pub fn download_activity(&self, id: ActivityId) -> Result<Vec<u8>> {
-        let result = self._download_activity(id);
-        if let Err(Error::Forbidden) = result {
-            warn!("Got 403, trying to login again and repeat the query");
-            self.auth()?;
-            self._download_activity(id)
-        } else {
-            result
+        let mut trials = 3;
+        loop {
+            let result = self._download_activity(id);
+
+            if let Err(Error::Forbidden) = result {
+                warn!("Got 403, trying to login again and repeat the query");
+                if trials > 0 {
+                    self.auth()?;
+                    trials = trials - 1;
+                } else {
+                    return Err(Error::Forbidden)
+                }
+            } else {
+                return result
+            }
         }
     }
 
