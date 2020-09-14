@@ -17,6 +17,10 @@ To run:
 nix develop --command cargo run <USERNAME> <PASSWORD>
 ```
 
+```
+nix run github:wagdav/garmin_export
+```
+
 ## Acknowledgements
 
 I read the source code of these projects to understand the idiosyncratic API of
