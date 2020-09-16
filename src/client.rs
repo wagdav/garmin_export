@@ -34,28 +34,10 @@ impl Client {
     }
 
     pub fn list_activities(&self) -> Result<Vec<Activity>> {
-        let mut trials = 3;
-        loop {
-            let result = self._list_activities();
-
-            if let Err(Error::Forbidden) = result {
-                warn!("Got 403, trying to login again and repeat the query");
-                if trials > 0 {
-                    self.auth()?;
-                    trials = trials - 1;
-                } else {
-                    return Err(Error::Forbidden)
-                }
-            } else {
-                return result
-            }
-        }
-    }
-
-    fn _list_activities(&self) -> Result<Vec<Activity>> {
-        debug!("Listing  activities");
-        self.limiter.wait();
-        let response = self.http
+        self.retry(|| {
+            debug!("Listing  activities");
+            self.limiter.wait();
+            let response = self.http
             .get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities")
             .query(&[
                 ("start", 0.to_string()),
@@ -64,58 +46,40 @@ impl Client {
             .send()?
             .error_for_status()?;
 
-        let activities = response.json().map_err(|error| {
-            Error::APIError(format!(
-                "Cannot decode the activity list response: {}",
-                error
-            ))
-        });
+            let activities = response.json().map_err(|error| {
+                Error::APIError(format!(
+                    "Cannot decode the activity list response: {}",
+                    error
+                ))
+            });
 
-        debug!("Activities: {:#?}", activities);
-        activities
+            debug!("Activities: {:#?}", activities);
+            activities
+        })
     }
 
     pub fn download_activity(&self, id: ActivityId) -> Result<Vec<u8>> {
-        let mut trials = 3;
-        loop {
-            let result = self._download_activity(id);
+        self.retry(|| {
+            debug!("Downloading activity {}", id);
+            self.limiter.wait();
+            let mut response = self
+                .http
+                .get(&format!(
+                    "{}/proxy/download-service/files/activity/{}",
+                    MODERN_URL, id
+                ))
+                .send()?
+                .error_for_status()?;
 
-            if let Err(Error::Forbidden) = result {
-                warn!("Got 403, trying to login again and repeat the query");
-                if trials > 0 {
-                    self.auth()?;
-                    trials = trials - 1;
-                } else {
-                    return Err(Error::Forbidden)
-                }
-            } else {
-                return result
-            }
-        }
-    }
+            let mut buf = vec![];
+            response.copy_to(&mut buf)?;
 
-    fn _download_activity(&self, id: ActivityId) -> Result<Vec<u8>> {
-        debug!("Downloading activity {}", id);
-        self.limiter.wait();
-        let mut response = self
-            .http
-            .get(&format!(
-                "{}/proxy/download-service/files/activity/{}",
-                MODERN_URL, id
-            ))
-            .send()?
-            .error_for_status()?;
-
-        let mut buf = vec![];
-        response.copy_to(&mut buf)?;
-
-        Ok(unzip(&buf)?)
+            Ok(unzip(&buf)?)
+        })
     }
 
     fn auth(&self) -> Result<()> {
-        let params = [
-            ("service", MODERN_URL),
-        ];
+        let params = [("service", MODERN_URL)];
 
         let data = [
             ("username", self.email.as_str()),
@@ -164,6 +128,28 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    fn retry<F, R>(&self, action: F) -> Result<R>
+    where
+        F: Fn() -> Result<R>,
+    {
+        let mut trials = 3;
+        loop {
+            let result = action();
+
+            if let Err(Error::Forbidden) = result {
+                warn!("Got 403, trying to login again and repeat the query");
+                if trials > 0 {
+                    self.auth()?;
+                    trials = trials - 1;
+                } else {
+                    return Err(Error::Forbidden);
+                }
+            } else {
+                return result;
+            }
+        }
     }
 }
 
