@@ -137,12 +137,12 @@ impl Client {
         let mut trials = 3;
         loop {
             let result = action();
+            trials = trials - 1;
 
             if let Err(Error::Forbidden) = result {
-                warn!("Got 403, trying to login again and repeat the query");
                 if trials > 0 {
+                    warn!("Got 403, trying to login again and repeat the query");
                     self.auth()?;
-                    trials = trials - 1;
                 } else {
                     return Err(Error::Forbidden);
                 }
