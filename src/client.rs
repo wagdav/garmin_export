@@ -139,15 +139,12 @@ impl Client {
             let result = action();
             trials -= 1;
 
-            if let Err(Error::Forbidden) = result {
-                if trials > 0 {
+            match result {
+                Err(Error::Forbidden) if trials > 0 => {
                     warn!("Got 403, trying to login again and repeat the query");
                     self.auth()?;
-                } else {
-                    return Err(Error::Forbidden);
                 }
-            } else {
-                return result;
+                _ => return result,
             }
         }
     }
