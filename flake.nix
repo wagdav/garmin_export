@@ -26,8 +26,8 @@
 
           cargoSha256 = "sha256-/piauB9Hrv3lBikUdq8wpu8nhcitDVpdyFyiEYfiKAA=";
 
-          buildInputs = [
-            final.openssl.dev
+          nativeBuildInputs = [
+            final.openssl
             final.pkg-config
           ];
         };
@@ -37,10 +37,10 @@
         with import nixpkgs { inherit system; };
 
         mkShell {
-          buildInputs = [
+          nativeBuildInputs = [
             cargo
             clippy
-            openssl.dev
+            openssl
             pkg-config
             rustc
             rustfmt
