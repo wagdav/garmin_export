@@ -137,7 +137,7 @@ impl Client {
         let mut trials = 3;
         loop {
             let result = action();
-            trials = trials - 1;
+            trials -= 1;
 
             if let Err(Error::Forbidden) = result {
                 if trials > 0 {
