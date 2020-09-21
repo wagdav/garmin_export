@@ -1,40 +1,71 @@
 mod activity;
 mod client;
-mod config;
 mod error;
 mod rate_limiter;
 
 use client::Client;
-use config::Config;
 use error::*;
 use log::*;
-use std::env;
 use std::fs;
 use std::process;
+use structopt::StructOpt;
+
+#[derive(Debug, StructOpt)]
+#[structopt(
+    name = "garmin_export",
+    about = "Export FIT files from connect.garmin.com"
+)]
+struct Config {
+    username: String,
+    password: String,
+    #[structopt(subcommand)]
+    cmd: Option<Command>,
+}
+
+#[derive(Debug, StructOpt)]
+enum Command {
+    #[structopt(about = "Export a given activity")]
+    Activity {
+        #[structopt(help = "Activity ID")]
+        id: activity::ActivityId,
+    },
+}
 
 fn main() {
     let env = env_logger::Env::default().filter_or("GARMIN_EXPORT_LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
-    let config = Config::new(env::args()).unwrap_or_else(|err| {
-        error!("Problem parsing arguments: {:?}", err);
-        process::exit(1);
-    });
+    let config = Config::from_args();
+    debug!("{:?}", config);
 
-    download_activities(config).unwrap_or_else(|err| {
-        error!("Couldn't download activities: {:?}", err);
-        process::exit(1);
-    });
+    let client = Client::new(&config.username, &config.password).unwrap();
+
+    match config.cmd {
+        None => {
+            download_activities(&client).unwrap_or_else(|err| {
+                error!("Couldn't download activities: {:?}", err);
+                process::exit(1);
+            });
+        }
+        Some(Command::Activity { id }) => {
+            download_activity(&client, id).unwrap_or_else(|err| {
+                error!("Couldn't download the specified activity: {:?}", err);
+                process::exit(1);
+            });
+        }
+    }
 }
 
-fn download_activities(config: Config) -> Result<()> {
-    let client = Client::new(&config.username, &config.password)?;
+fn download_activity(client: &Client, id: activity::ActivityId) -> Result<()> {
+    let zip = client.download_activity(id)?;
+    let fname = format!("{}.fit", id);
+    fs::write(fname, zip.as_slice())?;
+    Ok(())
+}
 
+fn download_activities(client: &Client) -> Result<()> {
     for activity in client.list_activities()?.iter() {
-        let zip = client.download_activity(activity.id())?;
-        let fname = format!("{}.fit", activity.id());
-        fs::write(fname, zip.as_slice())?;
+        download_activity(client, activity.id())?;
     }
-
     Ok(())
 }

@@ -13,6 +13,7 @@ log = "0.4"
 regex = "1"
 reqwest = { version="0.10", features=["blocking", "cookies", "json"] }
 serde = "1.0"
+structopt = "0.3.17"
 zip = "0.5.6"
 
 [dev-dependencies]
