@@ -40,18 +40,16 @@ fn main() {
 
     let client = Client::new(&config.username, &config.password).unwrap();
 
-    match config.cmd {
-        None => {
-            download_activities(&client).unwrap_or_else(|err| {
-                error!("Couldn't download activities: {:?}", err);
-                process::exit(1);
-            });
-        }
-        Some(Command::Activity { id }) => {
-            download_activity(&client, id).unwrap_or_else(|err| {
-                error!("Couldn't download the specified activity: {:?}", err);
-                process::exit(1);
-            });
+    let result = match config.cmd {
+        None => download_activities(&client),
+        Some(Command::Activity { id }) => download_activity(&client, id),
+    };
+
+    match result {
+        Ok(()) => process::exit(0),
+        Err(err) => {
+            error!("Couldn't download the specified activity: {:?}", err);
+            process::exit(1);
         }
     }
 }
