@@ -108,6 +108,7 @@ impl Client {
         assert!(res.status().is_redirection());
 
         let mut next_url = res.headers().get(header::LOCATION).unwrap().clone();
+        let mut redirect_count = 6;
         loop {
             debug!("Redirecting to {:?}", next_url);
 
@@ -117,6 +118,7 @@ impl Client {
                 .get(next_url.to_str().unwrap())
                 .send()?
                 .error_for_status()?;
+            redirect_count -= 1;
 
             if response.status().is_success() {
                 break;
@@ -124,6 +126,10 @@ impl Client {
 
             if response.status().is_redirection() {
                 next_url = response.headers().get(header::LOCATION).unwrap().clone();
+            }
+
+            if redirect_count == 0 {
+                break;
             }
         }
 
