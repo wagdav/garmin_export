@@ -37,7 +37,7 @@
         with import nixpkgs { inherit system; };
 
         mkShell {
-          nativeBuildInputs = [
+          buildInputs = [
             cargo
             clippy
             openssl
