@@ -29,6 +29,9 @@ enum Command {
         #[structopt(help = "Activity ID")]
         id: activity::ActivityId,
     },
+    Fit {
+        path: std::path::PathBuf,
+    },
 }
 
 fn main() {
@@ -38,11 +41,16 @@ fn main() {
     let config = Config::from_args();
     debug!("{:?}", config);
 
-    let client = Client::new(&config.username, &config.password).unwrap();
-
     let result = match config.cmd {
-        None => download_activities(&client),
-        Some(Command::Activity { id }) => download_activity(&client, id),
+        None => {
+            let client = Client::new(&config.username, &config.password).unwrap();
+            download_activities(&client)
+        }
+        Some(Command::Activity { id }) => {
+            let client = Client::new(&config.username, &config.password).unwrap();
+            download_activity(&client, id)
+        }
+        Some(Command::Fit { path }) => show_fit(&path),
     };
 
     match result {
@@ -64,6 +72,14 @@ fn download_activity(client: &Client, id: activity::ActivityId) -> Result<()> {
 fn download_activities(client: &Client) -> Result<()> {
     for activity in client.list_activities()?.iter() {
         download_activity(client, activity.id())?;
+    }
+    Ok(())
+}
+
+fn show_fit(path: &std::path::PathBuf) -> Result<()> {
+    let mut fp = std::fs::File::open(&path)?;
+    for data in fitparser::from_reader(&mut fp).unwrap() {
+        println!("{:#?}", data);
     }
     Ok(())
 }
