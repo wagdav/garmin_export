@@ -4,6 +4,7 @@
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: fit2gpx.sh <FIT_FILE>"
+    exit 1
 fi
 
 fit_file=$1
