@@ -56,7 +56,7 @@ fn main() {
     match result {
         Ok(()) => process::exit(0),
         Err(err) => {
-            error!("Couldn't download the specified activity: {:?}", err);
+            error!("{:?}", err);
             process::exit(1);
         }
     }
