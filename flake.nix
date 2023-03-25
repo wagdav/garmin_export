@@ -30,6 +30,10 @@
             final.openssl
             final.pkg-config
           ];
+
+          buildInputs = [
+            final.darwin.apple_sdk.frameworks.Security
+          ];
         };
       };
 
