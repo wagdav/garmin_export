@@ -24,7 +24,7 @@
             filter = final.lib.cleanSourceFilter;
           };
 
-          cargoSha256 = "sha256-uDWMjQO3v/48xDCnS5BHl66M+gRl3xYV1Izr93xqqqI=";
+          cargoSha256 = "sha256-4RvClaBb+wi0lxm1Bd8DYc4O6ztb1l9bWaaIm5HQfuU=";
 
           nativeBuildInputs = [
             final.openssl
