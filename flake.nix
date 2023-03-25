@@ -1,7 +1,7 @@
 {
   description = "Export FIT files from Garmin Connect";
 
-  inputs.nixpkgs.url = "nixpkgs/nixos-20.03";
+  inputs.nixpkgs.url = "nixpkgs/nixos-22.11";
 
   outputs = { self, nixpkgs }:
 
@@ -24,7 +24,7 @@
             filter = final.lib.cleanSourceFilter;
           };
 
-          cargoSha256 = "sha256-uNPAAR+rrBu4/7AYL1clgDeFefENFbryOgjrMbVdfaM=";
+          cargoSha256 = "sha256-uDWMjQO3v/48xDCnS5BHl66M+gRl3xYV1Izr93xqqqI=";
 
           nativeBuildInputs = [
             final.openssl
