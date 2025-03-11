@@ -8,14 +8,14 @@ edition = "2018"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-env_logger = "0.7"
-fitparser = "0.5"
+env_logger = "0.11"
+fitparser = "0.9"
 log = "0.4"
 regex = "1"
-reqwest = { version="0.11", features=["blocking", "cookies", "json"] }
+reqwest = { version="0.12", features=["blocking", "cookies", "json"] }
 serde = "1.0"
 structopt = "0.3.17"
-zip = "0.5.6"
+zip = "2.2.3"
 
 [dev-dependencies]
 serde_json = "1.0"
