@@ -8,25 +8,22 @@ use error::*;
 use log::*;
 use std::fs;
 use std::process;
-use structopt::StructOpt;
+use clap::{Parser, Subcommand};
 
-#[derive(Debug, StructOpt)]
-#[structopt(
-    name = "garmin_export",
-    about = "Export FIT files from connect.garmin.com"
-)]
-struct Config {
+#[derive(Debug, Parser)]
+#[command(name = "garmin_export")]
+#[command(about = "Export FIT files from connect.garmin.com")]
+struct Cli {
     username: String,
     password: String,
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     cmd: Option<Command>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 enum Command {
-    #[structopt(about = "Export a given activity")]
+    #[command(about = "Export a given activity")]
     Activity {
-        #[structopt(help = "Activity ID")]
         id: activity::ActivityId,
     },
     Fit {
@@ -38,17 +35,17 @@ fn main() {
     let env = env_logger::Env::default().filter_or("GARMIN_EXPORT_LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
-    let config = Config::from_args();
-    debug!("{:?}", config);
+    let cli = Cli::parse();
+    debug!("{:?}", cli);
 
-    let result = match config.cmd {
+    let result = match &cli.cmd {
         None => {
-            let client = Client::new(&config.username, &config.password).unwrap();
+            let client = Client::new(&cli.username, &cli.password).unwrap();
             download_activities(&client)
         }
         Some(Command::Activity { id }) => {
-            let client = Client::new(&config.username, &config.password).unwrap();
-            download_activity(&client, id)
+            let client = Client::new(&cli.username, &cli.password).unwrap();
+            download_activity(&client, *id)
         }
         Some(Command::Fit { path }) => show_fit(&path),
     };
