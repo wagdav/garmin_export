@@ -47,7 +47,7 @@ fn main() {
             let client = Client::new(&cli.username, &cli.password).unwrap();
             download_activity(&client, *id)
         }
-        Some(Command::Fit { path }) => show_fit(&path),
+        Some(Command::Fit { path }) => show_fit(path),
     };
 
     match result {
@@ -74,7 +74,7 @@ fn download_activities(client: &Client) -> Result<()> {
 }
 
 fn show_fit(path: &std::path::PathBuf) -> Result<()> {
-    let mut fp = std::fs::File::open(&path)?;
+    let mut fp = std::fs::File::open(path)?;
     for data in fitparser::from_reader(&mut fp).unwrap() {
         println!("{:#?}", data);
     }

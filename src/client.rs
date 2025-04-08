@@ -64,7 +64,7 @@ impl Client {
             self.limiter.wait();
             let mut response = self
                 .http
-                .get(&format!(
+                .get(format!(
                     "{}/proxy/download-service/files/activity/{}",
                     MODERN_URL, id
                 ))
@@ -74,7 +74,7 @@ impl Client {
             let mut buf = vec![];
             response.copy_to(&mut buf)?;
 
-            Ok(unzip(&buf)?)
+            unzip(&buf)
         })
     }
 

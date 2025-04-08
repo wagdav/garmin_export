@@ -41,14 +41,12 @@ mod tests {
         let start = time::Instant::now();
 
         limiter.wait();
-        time::SystemTime::now();
         assert!(
             start.elapsed() < time::Duration::from_millis(10),
             "should be instantneous"
         );
 
         limiter.wait();
-        time::SystemTime::now();
         assert!(
             start.elapsed() > time::Duration::from_secs(1),
             "should for wait the the preconfigured duration"
