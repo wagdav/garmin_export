@@ -1,0 +1,2 @@
+{:deps
+ {org.seleniumhq.selenium/selenium-java {:mvn/version "4.31.0"}}}
